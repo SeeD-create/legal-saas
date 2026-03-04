@@ -507,7 +507,7 @@ const StampTool = {
 
   endDrag() {
     if (!this.isDragging) return;
-    this.isDragging = false;
+    // isDragging を true のまま維持し、直後の click イベントをブロック
     const stampEl = document.getElementById('stamp-ws-stamp');
     stampEl.classList.remove('dragging');
 
@@ -520,7 +520,8 @@ const StampTool = {
     const key = this.currentFileIdx + '-' + this.currentPageIdx;
     this.stampPlacements[key] = pdfPos;
 
-    setTimeout(() => { this.isDragging = false; }, 50);
+    // click イベントが発火した後にフラグをリセット
+    setTimeout(() => { this.isDragging = false; }, 100);
   },
 
   // ===== Stamp image creation =====
