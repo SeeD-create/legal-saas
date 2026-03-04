@@ -85,6 +85,11 @@
     <a class="nav-item" data-tool="calculator" href="#calculator">
       <span class="icon">&#128178;</span><span>損害計算</span>
     </a>
+
+    <div class="nav-section">アカウント</div>
+    <a class="nav-item" data-tool="pricing" href="#pricing">
+      <span class="icon">&#11088;</span><span>プラン変更</span>
+    </a>
   </div>
   <div class="sidebar-user">
     <div id="sidebar-userEmail" class="user-email"></div>
@@ -355,6 +360,62 @@
     </div>
   </div>
 
+  <!-- ===== 料金プラン ===== -->
+  <div class="page" id="page-pricing">
+    <div class="page-header">
+      <h2>料金プラン</h2>
+      <p>ご利用状況に合わせてプランをお選びください</p>
+    </div>
+    <div class="pricing-grid">
+      <div class="pricing-card">
+        <div class="pricing-name">ライト</div>
+        <div class="pricing-price">&yen;3,300<span>/月</span></div>
+        <ul class="pricing-features">
+          <li>案件要約: 月10件</li>
+          <li>証拠スタンプ: 無制限</li>
+          <li>損害計算: 無制限</li>
+          <li class="disabled">書面分析</li>
+          <li class="disabled">準備書面</li>
+          <li class="disabled">訴状生成</li>
+          <li class="disabled">判例検索</li>
+        </ul>
+        <button class="btn btn-outline btn-full" onclick="Pricing.checkout('light')">ライトを選択</button>
+      </div>
+      <div class="pricing-card popular">
+        <div class="pricing-badge">人気</div>
+        <div class="pricing-name">スタンダード</div>
+        <div class="pricing-price">&yen;9,900<span>/月</span></div>
+        <ul class="pricing-features">
+          <li>案件要約: 月50件</li>
+          <li>書面分析: 月30件</li>
+          <li>準備書面: 月20件</li>
+          <li>訴状生成: 月10件</li>
+          <li>証拠スタンプ: 無制限</li>
+          <li>損害計算: 無制限</li>
+          <li class="disabled">判例検索</li>
+        </ul>
+        <button class="btn btn-primary btn-full" onclick="Pricing.checkout('standard')">スタンダードを選択</button>
+      </div>
+      <div class="pricing-card">
+        <div class="pricing-name">プロ</div>
+        <div class="pricing-price">&yen;19,800<span>/月</span></div>
+        <ul class="pricing-features">
+          <li>案件要約: 無制限</li>
+          <li>書面分析: 無制限</li>
+          <li>準備書面: 無制限</li>
+          <li>訴状生成: 無制限</li>
+          <li>判例検索: 無制限</li>
+          <li>証拠スタンプ: 無制限</li>
+          <li>損害計算: 無制限</li>
+        </ul>
+        <button class="btn btn-outline btn-full" onclick="Pricing.checkout('pro')">プロを選択</button>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:16px">
+      <button class="btn btn-outline" id="pricing-portal" onclick="Pricing.portal()" style="display:none">サブスクリプション管理（Stripe）</button>
+    </div>
+  </div>
+
 </div>
 </div><!-- /app-main -->
 
@@ -373,6 +434,40 @@
 <script src="js/tools/stamp.js"></script>
 <script src="js/tools/calculator.js"></script>
 <script>
+  const Pricing = {
+    async checkout(plan) {
+      const token = Auth.getToken();
+      if (!token) { alert('ログインが必要です'); return; }
+      try {
+        const resp = await fetch(WORKER_URL + '/api/stripe/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+          body: JSON.stringify({ plan })
+        });
+        const data = await resp.json();
+        if (data.url) window.location.href = data.url;
+        else alert(data.error || 'エラーが発生しました');
+      } catch (e) { alert('通信エラーが発生しました'); }
+    },
+    async portal() {
+      const token = Auth.getToken();
+      if (!token) return;
+      try {
+        const resp = await fetch(WORKER_URL + '/api/stripe/portal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }
+        });
+        const data = await resp.json();
+        if (data.url) window.location.href = data.url;
+        else alert(data.error || 'エラーが発生しました');
+      } catch (e) { alert('通信エラーが発生しました'); }
+    }
+  };
+  Router.register('pricing', { init() {
+    if (Auth.user && Auth.user.plan !== 'free') {
+      document.getElementById('pricing-portal').style.display = '';
+    }
+  }});
   document.addEventListener('DOMContentLoaded', () => Auth.init());
 </script>
 </body>

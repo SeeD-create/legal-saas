@@ -141,6 +141,20 @@ textarea.form-input{resize:vertical;min-height:80px}
 .calc-table th{text-align:left;padding:6px 8px;color:#555;font-weight:600}
 .calc-table td{padding:6px 8px}
 
+/* ===== Pricing ===== */
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.pricing-card{background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);padding:28px;text-align:center;position:relative;border:2px solid transparent;transition:border-color .2s}
+.pricing-card.popular{border-color:#4a6cf7}
+.pricing-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#4a6cf7;color:#fff;padding:2px 16px;border-radius:12px;font-size:12px;font-weight:600}
+.pricing-name{font-size:18px;font-weight:700;color:#1a1a2e;margin-bottom:8px}
+.pricing-price{font-size:32px;font-weight:700;color:#1a1a2e;margin-bottom:16px}
+.pricing-price span{font-size:14px;font-weight:400;color:#888}
+.pricing-features{list-style:none;text-align:left;margin-bottom:20px;font-size:13px}
+.pricing-features li{padding:6px 0;border-bottom:1px solid #f0f2f5;color:#333}
+.pricing-features li::before{content:'\2713';margin-right:8px;color:#27ae60;font-weight:700}
+.pricing-features li.disabled{color:#bbb}
+.pricing-features li.disabled::before{content:'\2014';color:#ccc}
+
 /* ===== Responsive ===== */
 @media(max-width:768px){
   .sidebar{width:60px}
