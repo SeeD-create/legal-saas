@@ -1,7 +1,22 @@
-// ===== 証拠スタンプツール =====
+// ===== 証拠スタンプツール（プレビュー付き） =====
 const StampTool = {
   subNumbers: [],
   files: [],
+  // Preview workspace state
+  pdfDocs: [],        // { file, pdfJsDoc?, imgEl?, pageCount, type:'pdf'|'image', pdfPageSizes:[] }
+  stampPlacements: {}, // "fileIdx-pageIdx" -> { x, y } in PDF points (bottom-left origin)
+  currentFileIdx: 0,
+  currentPageIdx: 0,
+  zoomLevel: 1.0,
+  allPages: false,
+  previewMode: false,
+  isDragging: false,
+  dragOffsetX: 0,
+  dragOffsetY: 0,
+  currentCanvasWidth: 0,
+  currentCanvasHeight: 0,
+  currentPdfWidth: 0,
+  currentPdfHeight: 0,
 
   init() {
     const dz = document.getElementById('stamp-dropzone');
@@ -25,17 +40,55 @@ const StampTool = {
     document.getElementById('stamp-position').addEventListener('change', () => this.updatePreview());
     document.getElementById('stamp-size').addEventListener('input', () => this.updatePreview());
     btnAddSub.addEventListener('click', () => this.addSubNumber());
-    btnProcess.addEventListener('click', () => this.process());
+    btnProcess.addEventListener('click', () => this.enterPreview());
+
+    // Workspace controls
+    document.getElementById('stamp-ws-back').addEventListener('click', () => this.exitPreview());
+    document.getElementById('stamp-ws-process').addEventListener('click', () => this.process());
+    document.getElementById('stamp-ws-prevPage').addEventListener('click', () => this.prevPage());
+    document.getElementById('stamp-ws-nextPage').addEventListener('click', () => this.nextPage());
+    document.getElementById('stamp-ws-zoomIn').addEventListener('click', () => this.zoom(0.25));
+    document.getElementById('stamp-ws-zoomOut').addEventListener('click', () => this.zoom(-0.25));
+    document.getElementById('stamp-ws-allPages').addEventListener('change', e => { this.allPages = e.target.checked; });
+
+    // Workspace settings sync
+    const wsCategory = document.getElementById('stamp-ws-category');
+    const wsMainNum = document.getElementById('stamp-ws-mainNumber');
+    const wsSize = document.getElementById('stamp-ws-size');
+    wsCategory.addEventListener('change', () => {
+      document.getElementById('stamp-category').value = wsCategory.value;
+      this.updatePreview();
+      this.updateWorkspaceStamp();
+    });
+    wsMainNum.addEventListener('input', () => {
+      document.getElementById('stamp-mainNumber').value = wsMainNum.value;
+      this.updatePreview();
+      this.updateWorkspaceStamp();
+    });
+    wsSize.addEventListener('input', () => {
+      document.getElementById('stamp-size').value = wsSize.value;
+      this.updateWorkspaceStamp();
+    });
+
+    // Canvas click to place stamp
+    const canvasWrap = document.getElementById('stamp-ws-canvasWrap');
+    canvasWrap.addEventListener('click', e => this.handleCanvasClick(e));
+
+    // Drag stamp
+    const stampEl = document.getElementById('stamp-ws-stamp');
+    stampEl.addEventListener('mousedown', e => this.startDrag(e));
+    document.addEventListener('mousemove', e => this.onDrag(e));
+    document.addEventListener('mouseup', () => this.endDrag());
 
     this.updateCategoryLabels();
     this.updatePreview();
   },
 
+  // ===== Stamp label (existing) =====
   getStampLabel(fileIndex) {
     const cat = document.getElementById('stamp-category').value;
     const num = parseInt(document.getElementById('stamp-mainNumber').value) || 1;
     const idx = fileIndex || 0;
-
     if (this.subNumbers.length > 0) {
       const lastSubVal = parseInt(this.subNumbers[this.subNumbers.length - 1].value) || 1;
       const subParts = this.subNumbers.map((s, si) => {
@@ -70,30 +123,18 @@ const StampTool = {
     const group = document.getElementById('stamp-subNumberGroup');
     const wrapper = document.createElement('span');
     wrapper.className = 'sub-number-group';
-    wrapper.style.display = 'inline-flex';
-    wrapper.style.alignItems = 'center';
-    wrapper.style.gap = '4px';
-
-    const sep = document.createElement('span');
-    sep.textContent = 'の';
-    sep.style.fontWeight = '500';
-
+    wrapper.style.display = 'inline-flex'; wrapper.style.alignItems = 'center'; wrapper.style.gap = '4px';
+    const sep = document.createElement('span'); sep.textContent = 'の'; sep.style.fontWeight = '500';
     const input = document.createElement('input');
     input.type = 'number'; input.min = 1; input.max = 200; input.value = 1;
-    input.className = 'form-input';
-    input.style.width = '60px'; input.style.textAlign = 'center'; input.style.padding = '6px';
+    input.className = 'form-input'; input.style.width = '60px'; input.style.textAlign = 'center'; input.style.padding = '6px';
     input.addEventListener('input', () => this.updatePreview());
-
     const btnRm = document.createElement('button');
-    btnRm.className = 'btn btn-danger btn-sm';
-    btnRm.textContent = '\u00d7';
+    btnRm.className = 'btn btn-danger btn-sm'; btnRm.textContent = '\u00d7';
     btnRm.style.padding = '2px 8px'; btnRm.style.minWidth = '24px';
     const idx = this.subNumbers.length;
     btnRm.addEventListener('click', () => this.removeSubNumber(idx));
-
-    wrapper.appendChild(sep);
-    wrapper.appendChild(input);
-    wrapper.appendChild(btnRm);
+    wrapper.appendChild(sep); wrapper.appendChild(input); wrapper.appendChild(btnRm);
     group.appendChild(wrapper);
     this.subNumbers.push(input);
     this.updatePreview();
@@ -110,8 +151,7 @@ const StampTool = {
       group.appendChild(w);
       this.subNumbers.push(input);
       const newIdx = this.subNumbers.length - 1;
-      const btn = w.querySelector('button');
-      btn.onclick = () => this.removeSubNumber(newIdx);
+      w.querySelector('button').onclick = () => this.removeSubNumber(newIdx);
     });
     this.updatePreview();
   },
@@ -119,9 +159,8 @@ const StampTool = {
   addFiles(fileListInput) {
     for (const f of fileListInput) {
       const n = f.name.toLowerCase();
-      if (n.endsWith('.pdf') || n.endsWith('.jpg') || n.endsWith('.jpeg') || n.endsWith('.png')) {
+      if (n.endsWith('.pdf') || n.endsWith('.jpg') || n.endsWith('.jpeg') || n.endsWith('.png'))
         this.files.push({ file: f, status: 'ready' });
-      }
     }
     this.updateFileList();
     document.getElementById('stamp-btnProcess').disabled = this.files.length === 0;
@@ -131,22 +170,16 @@ const StampTool = {
     const list = document.getElementById('stamp-fileList');
     const hint = document.getElementById('stamp-batchHint');
     list.innerHTML = '';
-
     if (this.files.length > 1) {
       hint.style.display = '';
       hint.textContent = this.subNumbers.length > 0
         ? '※ 複数ファイル: 枝番が自動で連番になります'
         : '※ 複数ファイル: 号証番号が自動で連番になります';
-    } else {
-      hint.style.display = 'none';
-    }
-
+    } else { hint.style.display = 'none'; }
     this.files.forEach((f, i) => {
-      const div = document.createElement('div');
-      div.className = 'file-item';
-      const statusCls = f.status === 'done' ? 'done' : f.status === 'processing' ? 'processing' : f.status === 'error' ? 'error' : '';
-      const statusText = f.status === 'done' ? '\u2713' : f.status === 'processing' ? '...' : f.status === 'error' ? '\u2717' : '';
-      div.innerHTML = `<span class="fname" style="flex:1">${f.file.name}</span><span style="color:#4a6cf7">\u2192</span><span class="file-output-name">${this.getStampLabel(i)}.pdf</span><span class="fsize ${statusCls}">${statusText}</span><button class="fremove" data-idx="${i}">\u00d7</button>`;
+      const div = document.createElement('div'); div.className = 'file-item';
+      const st = f.status === 'done' ? '\u2713' : f.status === 'processing' ? '...' : f.status === 'error' ? '\u2717' : '';
+      div.innerHTML = `<span class="fname" style="flex:1">${f.file.name}</span><span style="color:#4a6cf7">\u2192</span><span class="file-output-name">${this.getStampLabel(i)}.pdf</span><span class="fsize">${st}</span><button class="fremove" data-idx="${i}">\u00d7</button>`;
       list.appendChild(div);
     });
     list.querySelectorAll('.fremove').forEach(b => {
@@ -158,6 +191,370 @@ const StampTool = {
     });
   },
 
+  // ===== Image page size calculation (shared between preview and process) =====
+  calcImagePageSize(imgW, imgH) {
+    const A4S = 595.28, A4L = 841.89;
+    let pageW, pageH;
+    if (imgW >= imgH) {
+      pageW = A4L; pageH = A4L * (imgH / imgW);
+      if (pageH > A4S * 1.2) { pageH = A4S; pageW = A4S * (imgW / imgH); }
+    } else {
+      pageH = A4L; pageW = A4L * (imgW / imgH);
+      if (pageW > A4S * 1.2) { pageW = A4S; pageH = A4S * (imgH / imgW); }
+    }
+    return { pageW, pageH };
+  },
+
+  // ===== Preview Workspace =====
+  async enterPreview() {
+    if (this.files.length === 0) return;
+    document.getElementById('stamp-config-phase').style.display = 'none';
+    document.getElementById('stamp-workspace').style.display = '';
+    this.previewMode = true;
+    this.currentFileIdx = 0;
+    this.currentPageIdx = 0;
+    this.zoomLevel = 1.0;
+    this.stampPlacements = {};
+
+    // Sync settings to workspace panel
+    document.getElementById('stamp-ws-category').value = document.getElementById('stamp-category').value;
+    document.getElementById('stamp-ws-mainNumber').value = document.getElementById('stamp-mainNumber').value;
+    document.getElementById('stamp-ws-size').value = document.getElementById('stamp-size').value;
+
+    // Load all files
+    this.pdfDocs = [];
+    for (let i = 0; i < this.files.length; i++) {
+      const f = this.files[i].file;
+      const isImg = /\.(jpg|jpeg|png)$/i.test(f.name);
+      if (isImg) {
+        const url = URL.createObjectURL(f);
+        const img = new Image();
+        await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = url; });
+        const ps = this.calcImagePageSize(img.naturalWidth, img.naturalHeight);
+        this.pdfDocs.push({ file: f, imgEl: img, objectUrl: url, pageCount: 1, type: 'image', pdfPageSizes: [{ w: ps.pageW, h: ps.pageH }] });
+      } else {
+        const ab = await f.arrayBuffer();
+        const pdfJsDoc = await pdfjsLib.getDocument({ data: ab.slice(0) }).promise;
+        const pageSizes = [];
+        for (let p = 1; p <= pdfJsDoc.numPages; p++) {
+          const page = await pdfJsDoc.getPage(p);
+          const vp = page.getViewport({ scale: 1.0 });
+          pageSizes.push({ w: vp.width, h: vp.height });
+        }
+        this.pdfDocs.push({ file: f, pdfJsDoc, pageCount: pdfJsDoc.numPages, type: 'pdf', pdfPageSizes: pageSizes });
+      }
+    }
+    this.renderThumbnails();
+    await this.renderMainPreview();
+    this.updateWorkspaceFileInfo();
+  },
+
+  exitPreview() {
+    document.getElementById('stamp-config-phase').style.display = '';
+    document.getElementById('stamp-workspace').style.display = 'none';
+    this.previewMode = false;
+    // Cleanup
+    for (const doc of this.pdfDocs) {
+      if (doc.type === 'pdf' && doc.pdfJsDoc) doc.pdfJsDoc.destroy();
+      if (doc.objectUrl) URL.revokeObjectURL(doc.objectUrl);
+    }
+    this.pdfDocs = [];
+    this.stampPlacements = {};
+    // Reset file statuses
+    this.files.forEach(f => f.status = 'ready');
+    this.updateFileList();
+    document.getElementById('stamp-btnProcess').textContent = 'プレビューを開く';
+    document.getElementById('stamp-btnProcess').disabled = this.files.length === 0;
+  },
+
+  // ===== Thumbnails =====
+  renderThumbnails() {
+    const container = document.getElementById('stamp-ws-thumbs');
+    container.innerHTML = '';
+    const THUMB_W = 140;
+    this.pdfDocs.forEach((doc, fi) => {
+      const group = document.createElement('div');
+      group.className = 'stamp-ws-thumb-group';
+      const label = document.createElement('div');
+      label.className = 'stamp-ws-thumb-label';
+      label.textContent = doc.file.name;
+      label.title = doc.file.name;
+      group.appendChild(label);
+      const subLabel = document.createElement('div');
+      subLabel.className = 'stamp-ws-thumb-sub';
+      subLabel.textContent = this.getStampLabel(fi);
+      subLabel.dataset.fileIdx = fi;
+      group.appendChild(subLabel);
+      for (let pi = 0; pi < doc.pageCount; pi++) {
+        const thumb = document.createElement('div');
+        thumb.className = 'stamp-ws-thumb' + (fi === 0 && pi === 0 ? ' active' : '');
+        thumb.dataset.fileIdx = fi;
+        thumb.dataset.pageIdx = pi;
+        const canvas = document.createElement('canvas');
+        thumb.appendChild(canvas);
+        thumb.addEventListener('click', () => {
+          this.currentFileIdx = fi;
+          this.currentPageIdx = pi;
+          this.renderMainPreview();
+          this.highlightThumb();
+          this.updateWorkspaceFileInfo();
+        });
+        group.appendChild(thumb);
+        this.renderThumbCanvas(doc, pi, canvas, THUMB_W);
+      }
+      container.appendChild(group);
+    });
+  },
+
+  async renderThumbCanvas(doc, pageIdx, canvas, maxWidth) {
+    if (doc.type === 'pdf') {
+      const page = await doc.pdfJsDoc.getPage(pageIdx + 1);
+      const vp0 = page.getViewport({ scale: 1.0 });
+      const scale = maxWidth / vp0.width;
+      const vp = page.getViewport({ scale });
+      canvas.width = vp.width; canvas.height = vp.height;
+      await page.render({ canvasContext: canvas.getContext('2d'), viewport: vp }).promise;
+    } else {
+      const img = doc.imgEl;
+      const scale = maxWidth / img.naturalWidth;
+      canvas.width = img.naturalWidth * scale;
+      canvas.height = img.naturalHeight * scale;
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+    }
+  },
+
+  highlightThumb() {
+    document.querySelectorAll('.stamp-ws-thumb').forEach(t => {
+      t.classList.toggle('active',
+        parseInt(t.dataset.fileIdx) === this.currentFileIdx &&
+        parseInt(t.dataset.pageIdx) === this.currentPageIdx);
+    });
+  },
+
+  // ===== Main Preview =====
+  async renderMainPreview() {
+    const doc = this.pdfDocs[this.currentFileIdx];
+    if (!doc) return;
+    const canvas = document.getElementById('stamp-ws-canvas');
+    const wrap = document.getElementById('stamp-ws-canvasWrap');
+    const ctx = canvas.getContext('2d');
+
+    const containerWidth = wrap.clientWidth - 40;
+    let pdfW, pdfH;
+    if (doc.type === 'pdf') {
+      const page = await doc.pdfJsDoc.getPage(this.currentPageIdx + 1);
+      const vp0 = page.getViewport({ scale: 1.0 });
+      pdfW = vp0.width; pdfH = vp0.height;
+      const baseScale = containerWidth / vp0.width;
+      const scale = baseScale * this.zoomLevel;
+      const vp = page.getViewport({ scale });
+      canvas.width = vp.width; canvas.height = vp.height;
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+    } else {
+      const img = doc.imgEl;
+      const ps = doc.pdfPageSizes[0];
+      pdfW = ps.w; pdfH = ps.h;
+      const baseScale = containerWidth / img.naturalWidth;
+      const scale = baseScale * this.zoomLevel;
+      canvas.width = img.naturalWidth * scale;
+      canvas.height = img.naturalHeight * scale;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    }
+
+    this.currentCanvasWidth = canvas.width;
+    this.currentCanvasHeight = canvas.height;
+    this.currentPdfWidth = pdfW;
+    this.currentPdfHeight = pdfH;
+
+    // Update overlay size to match canvas
+    const overlay = document.getElementById('stamp-ws-overlay');
+    overlay.style.width = canvas.width + 'px';
+    overlay.style.height = canvas.height + 'px';
+    // Position overlay over canvas
+    overlay.style.left = canvas.offsetLeft + 'px';
+    overlay.style.top = canvas.offsetTop + 'px';
+
+    this.updateStampOverlayPosition();
+    this.updatePageNav();
+    document.getElementById('stamp-ws-zoomLevel').textContent = Math.round(this.zoomLevel * 100) + '%';
+  },
+
+  updatePageNav() {
+    const doc = this.pdfDocs[this.currentFileIdx];
+    const totalPages = this.pdfDocs.reduce((s, d) => s + d.pageCount, 0);
+    let currentAbsolute = 0;
+    for (let i = 0; i < this.currentFileIdx; i++) currentAbsolute += this.pdfDocs[i].pageCount;
+    currentAbsolute += this.currentPageIdx + 1;
+    document.getElementById('stamp-ws-pageInfo').textContent = `${currentAbsolute} / ${totalPages}`;
+  },
+
+  prevPage() {
+    if (this.currentPageIdx > 0) {
+      this.currentPageIdx--;
+    } else if (this.currentFileIdx > 0) {
+      this.currentFileIdx--;
+      this.currentPageIdx = this.pdfDocs[this.currentFileIdx].pageCount - 1;
+    } else return;
+    this.renderMainPreview();
+    this.highlightThumb();
+    this.updateWorkspaceFileInfo();
+  },
+
+  nextPage() {
+    const doc = this.pdfDocs[this.currentFileIdx];
+    if (this.currentPageIdx < doc.pageCount - 1) {
+      this.currentPageIdx++;
+    } else if (this.currentFileIdx < this.pdfDocs.length - 1) {
+      this.currentFileIdx++;
+      this.currentPageIdx = 0;
+    } else return;
+    this.renderMainPreview();
+    this.highlightThumb();
+    this.updateWorkspaceFileInfo();
+  },
+
+  zoom(delta) {
+    this.zoomLevel = Math.max(0.25, Math.min(3.0, this.zoomLevel + delta));
+    this.renderMainPreview();
+  },
+
+  updateWorkspaceFileInfo() {
+    const doc = this.pdfDocs[this.currentFileIdx];
+    if (!doc) return;
+    const el = document.getElementById('stamp-ws-fileInfo');
+    el.innerHTML = `<div class="fi-name">${doc.file.name}</div>
+      <div class="fi-meta">ページ ${this.currentPageIdx + 1} / ${doc.pageCount}</div>
+      <div class="fi-meta">スタンプ: ${this.getStampLabel(this.currentFileIdx)}</div>`;
+  },
+
+  updateWorkspaceStamp() {
+    const stampEl = document.getElementById('stamp-ws-stamp');
+    stampEl.textContent = this.getStampLabel(this.currentFileIdx);
+    // Update thumbnail labels
+    document.querySelectorAll('.stamp-ws-thumb-sub').forEach(el => {
+      el.textContent = this.getStampLabel(parseInt(el.dataset.fileIdx));
+    });
+    this.updateWorkspaceFileInfo();
+  },
+
+  // ===== Coordinate conversion =====
+  pdfToCanvas(pdfX, pdfY) {
+    const sx = this.currentCanvasWidth / this.currentPdfWidth;
+    const sy = this.currentCanvasHeight / this.currentPdfHeight;
+    return { x: pdfX * sx, y: (this.currentPdfHeight - pdfY) * sy };
+  },
+
+  canvasToPdf(cx, cy) {
+    const sx = this.currentPdfWidth / this.currentCanvasWidth;
+    const sy = this.currentPdfHeight / this.currentCanvasHeight;
+    return { x: cx * sx, y: this.currentPdfHeight - (cy * sy) };
+  },
+
+  getDefaultPdfPosition(fileIdx, pageIdx) {
+    const doc = this.pdfDocs[fileIdx];
+    const ps = doc.pdfPageSizes[pageIdx] || doc.pdfPageSizes[0];
+    const pos = document.getElementById('stamp-position').value;
+    const fontSize = parseInt(document.getElementById('stamp-size').value) || 24;
+    // Estimate stamp dimensions in PDF points
+    const label = this.getStampLabel(fileIdx);
+    const estW = label.length * fontSize * 0.7 + 20;
+    const estH = fontSize * 1.25 + 20;
+    const m = 12;
+    switch (pos) {
+      case 'top-right': return { x: ps.w - estW - m, y: ps.h - m };
+      case 'top-left': return { x: m, y: ps.h - m };
+      case 'bottom-right': return { x: ps.w - estW - m, y: estH + m };
+      case 'bottom-left': return { x: m, y: estH + m };
+      default: return { x: ps.w - estW - m, y: ps.h - m };
+    }
+  },
+
+  getStampPlacement(fileIdx, pageIdx) {
+    const key = fileIdx + '-' + pageIdx;
+    if (this.stampPlacements[key]) return this.stampPlacements[key];
+    // Inherit from page 0 of same file
+    const key0 = fileIdx + '-0';
+    if (pageIdx > 0 && this.stampPlacements[key0]) return this.stampPlacements[key0];
+    return this.getDefaultPdfPosition(fileIdx, pageIdx);
+  },
+
+  updateStampOverlayPosition() {
+    const stampEl = document.getElementById('stamp-ws-stamp');
+    stampEl.textContent = this.getStampLabel(this.currentFileIdx);
+    const fontSize = parseInt(document.getElementById('stamp-ws-size').value) || 24;
+    const scaleFactor = this.currentCanvasWidth / this.currentPdfWidth;
+    stampEl.style.fontSize = Math.max(8, fontSize * scaleFactor * 0.75) + 'px';
+
+    const pos = this.getStampPlacement(this.currentFileIdx, this.currentPageIdx);
+    // pos.y is top of stamp in PDF coords (top = larger y value)
+    const canvasPos = this.pdfToCanvas(pos.x, pos.y);
+    stampEl.style.left = canvasPos.x + 'px';
+    stampEl.style.top = canvasPos.y + 'px';
+  },
+
+  // ===== Click to place =====
+  handleCanvasClick(e) {
+    if (this.isDragging) return;
+    const canvas = document.getElementById('stamp-ws-canvas');
+    const rect = canvas.getBoundingClientRect();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    // Check if click is within canvas bounds
+    if (cx < 0 || cy < 0 || cx > canvas.width || cy > canvas.height) return;
+
+    const pdfPos = this.canvasToPdf(cx, cy);
+    const key = this.currentFileIdx + '-' + this.currentPageIdx;
+    this.stampPlacements[key] = pdfPos;
+    this.updateStampOverlayPosition();
+  },
+
+  // ===== Drag to move =====
+  startDrag(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    this.isDragging = true;
+    const stampEl = document.getElementById('stamp-ws-stamp');
+    this.dragOffsetX = e.clientX - stampEl.offsetLeft;
+    this.dragOffsetY = e.clientY - stampEl.offsetTop;
+    stampEl.classList.add('dragging');
+  },
+
+  onDrag(e) {
+    if (!this.isDragging) return;
+    const stampEl = document.getElementById('stamp-ws-stamp');
+    const canvas = document.getElementById('stamp-ws-canvas');
+    const wrap = document.getElementById('stamp-ws-canvasWrap');
+    const canvasRect = canvas.getBoundingClientRect();
+    const wrapRect = wrap.getBoundingClientRect();
+
+    let newLeft = e.clientX - this.dragOffsetX;
+    let newTop = e.clientY - this.dragOffsetY;
+
+    // Clamp within canvas bounds (relative to overlay)
+    newLeft = Math.max(0, Math.min(canvas.width - stampEl.offsetWidth, newLeft));
+    newTop = Math.max(0, Math.min(canvas.height - stampEl.offsetHeight, newTop));
+
+    stampEl.style.left = newLeft + 'px';
+    stampEl.style.top = newTop + 'px';
+  },
+
+  endDrag() {
+    if (!this.isDragging) return;
+    this.isDragging = false;
+    const stampEl = document.getElementById('stamp-ws-stamp');
+    stampEl.classList.remove('dragging');
+
+    const left = parseInt(stampEl.style.left) || 0;
+    const top = parseInt(stampEl.style.top) || 0;
+    const pdfPos = this.canvasToPdf(left, top);
+    const key = this.currentFileIdx + '-' + this.currentPageIdx;
+    this.stampPlacements[key] = pdfPos;
+
+    // Small delay to prevent click event from firing
+    setTimeout(() => { this.isDragging = false; }, 50);
+  },
+
+  // ===== Stamp image creation (existing) =====
   async createStampImageBytes(label, fontSize) {
     await document.fonts.ready;
     const scale = 3;
@@ -184,50 +581,52 @@ const StampTool = {
     const pdfDoc = await PDFLib.PDFDocument.create();
     const name = file.name.toLowerCase();
     let image = name.endsWith('.png') ? await pdfDoc.embedPng(arrayBuffer) : await pdfDoc.embedJpg(arrayBuffer);
-    const imgW = image.width, imgH = image.height;
-    const A4S = 595.28, A4L = 841.89;
-    let pageW, pageH;
-    if (imgW >= imgH) {
-      pageW = A4L; pageH = A4L * (imgH / imgW);
-      if (pageH > A4S * 1.2) { pageH = A4S; pageW = A4S * (imgW / imgH); }
-    } else {
-      pageH = A4L; pageW = A4L * (imgW / imgH);
-      if (pageW > A4S * 1.2) { pageW = A4S; pageH = A4S * (imgH / imgW); }
-    }
-    const page = pdfDoc.addPage([pageW, pageH]);
-    page.drawImage(image, { x: 0, y: 0, width: pageW, height: pageH });
+    const ps = this.calcImagePageSize(image.width, image.height);
+    const page = pdfDoc.addPage([ps.pageW, ps.pageH]);
+    page.drawImage(image, { x: 0, y: 0, width: ps.pageW, height: ps.pageH });
     return pdfDoc;
   },
 
+  // ===== Process (enhanced with custom positions + all pages) =====
   async process() {
-    const btn = document.getElementById('stamp-btnProcess');
+    const btn = document.getElementById('stamp-ws-process');
     btn.disabled = true; btn.textContent = '処理中...';
+    const fontSize = parseInt(document.getElementById('stamp-ws-size').value) || 24;
     const pos = document.getElementById('stamp-position').value;
-    const fontSize = parseInt(document.getElementById('stamp-size').value) || 24;
 
     for (let i = 0; i < this.files.length; i++) {
       const label = this.getStampLabel(i);
       this.files[i].status = 'processing';
-      this.updateFileList();
       try {
         const f = this.files[i].file;
         const isImg = /\.(jpg|jpeg|png)$/i.test(f.name);
         let pdfDoc = isImg ? await this.createPdfFromImage(f) : await PDFLib.PDFDocument.load(await f.arrayBuffer());
         const pages = pdfDoc.getPages();
-        if (pages.length > 0) {
-          const stamp = await this.createStampImageBytes(label, fontSize);
-          const stampImg = await pdfDoc.embedPng(stamp.bytes);
-          const { width, height } = pages[0].getSize();
-          const m = 12;
+        const stamp = await this.createStampImageBytes(label, fontSize);
+        const stampImg = await pdfDoc.embedPng(stamp.bytes);
+
+        const pagesToStamp = this.allPages ? pages.length : Math.min(1, pages.length);
+        for (let pi = 0; pi < pagesToStamp; pi++) {
+          const { width, height } = pages[pi].getSize();
           let x, y;
-          switch (pos) {
-            case 'top-right': x = width - stamp.displayWidth - m; y = height - stamp.displayHeight - m; break;
-            case 'top-left': x = m; y = height - stamp.displayHeight - m; break;
-            case 'bottom-right': x = width - stamp.displayWidth - m; y = m; break;
-            case 'bottom-left': x = m; y = m; break;
+
+          // Check for custom placement
+          const placement = this.stampPlacements[i + '-' + pi] || (pi > 0 ? this.stampPlacements[i + '-0'] : null);
+          if (placement) {
+            x = placement.x;
+            y = placement.y - stamp.displayHeight; // PDF drawImage uses bottom-left corner
+          } else {
+            const m = 12;
+            switch (pos) {
+              case 'top-right': x = width - stamp.displayWidth - m; y = height - stamp.displayHeight - m; break;
+              case 'top-left': x = m; y = height - stamp.displayHeight - m; break;
+              case 'bottom-right': x = width - stamp.displayWidth - m; y = m; break;
+              case 'bottom-left': x = m; y = m; break;
+            }
           }
-          pages[0].drawImage(stampImg, { x, y, width: stamp.displayWidth, height: stamp.displayHeight });
+          pages[pi].drawImage(stampImg, { x, y, width: stamp.displayWidth, height: stamp.displayHeight });
         }
+
         const pdfBytes = await pdfDoc.save();
         const blob = new Blob([pdfBytes], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
@@ -238,10 +637,9 @@ const StampTool = {
       } catch (err) {
         console.error(err); this.files[i].status = 'error';
       }
-      this.updateFileList();
     }
     btn.textContent = 'スタンプを押して出力';
-    btn.disabled = this.files.length === 0;
+    btn.disabled = false;
   }
 };
 
