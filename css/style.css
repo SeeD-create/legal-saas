@@ -152,6 +152,11 @@ textarea.form-input{resize:vertical;min-height:80px}
 .stamp-ws-stamp.dragging{cursor:grabbing;opacity:.85;box-shadow:0 4px 16px rgba(0,0,0,.3)}
 .stamp-ws-nav{display:flex;align-items:center;justify-content:center;gap:12px;padding:10px 16px;background:#fff;border-top:1px solid #e0e0e0;flex-shrink:0}
 .stamp-ws-settings{width:220px;background:#fff;border-left:1px solid #e0e0e0;padding:16px;overflow-y:auto;flex-shrink:0;display:flex;flex-direction:column}
+.stamp-ws-stamp-preview{background:#f8f9fb;border-radius:6px;padding:12px;margin-top:8px;text-align:center}
+.stamp-ws-stamp-preview .stamp-preview{display:inline-block;font-size:15px}
+.stamp-ws-sub-row{display:flex;align-items:center;gap:4px;margin-top:4px}
+.stamp-ws-sub-row input{width:50px;text-align:center;padding:4px}
+.stamp-ws-sub-row .btn-rm{padding:1px 6px;font-size:12px;background:#e74c3c;color:#fff;border:none;border-radius:4px;cursor:pointer}
 .stamp-ws-file-info{font-size:12px;color:#666;background:#f8f9fb;border-radius:6px;padding:10px;margin-top:8px}
 .stamp-ws-file-info .fi-name{font-weight:600;color:#333;margin-bottom:2px;word-break:break-all}
 .stamp-ws-file-info .fi-meta{font-size:11px;color:#888}

@@ -24,22 +24,14 @@ const StampTool = {
     dz._bound = true;
 
     const fi = document.getElementById('stamp-fileInput');
-    const cat = document.getElementById('stamp-category');
-    const mainNum = document.getElementById('stamp-mainNumber');
-    const btnAddSub = document.getElementById('stamp-btnAddSub');
     const btnProcess = document.getElementById('stamp-btnProcess');
 
+    // Upload phase
     dz.addEventListener('click', () => fi.click());
     dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
     dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
     dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('dragover'); this.addFiles(e.dataTransfer.files); });
     fi.addEventListener('change', () => { this.addFiles(fi.files); fi.value = ''; });
-
-    cat.addEventListener('change', () => this.updatePreview());
-    mainNum.addEventListener('input', () => this.updatePreview());
-    document.getElementById('stamp-position').addEventListener('change', () => this.updatePreview());
-    document.getElementById('stamp-size').addEventListener('input', () => this.updatePreview());
-    btnAddSub.addEventListener('click', () => this.addSubNumber());
     btnProcess.addEventListener('click', () => this.enterPreview());
 
     // Workspace controls
@@ -50,44 +42,42 @@ const StampTool = {
     document.getElementById('stamp-ws-zoomIn').addEventListener('click', () => this.zoom(0.25));
     document.getElementById('stamp-ws-zoomOut').addEventListener('click', () => this.zoom(-0.25));
     document.getElementById('stamp-ws-allPages').addEventListener('change', e => { this.allPages = e.target.checked; });
+    document.getElementById('stamp-ws-btnAddSub').addEventListener('click', () => this.addSubNumber());
 
-    // Workspace settings sync
-    const wsCategory = document.getElementById('stamp-ws-category');
-    const wsMainNum = document.getElementById('stamp-ws-mainNumber');
-    const wsSize = document.getElementById('stamp-ws-size');
-    wsCategory.addEventListener('change', () => {
-      document.getElementById('stamp-category').value = wsCategory.value;
-      this.updatePreview();
-      this.updateWorkspaceStamp();
+    // Workspace settings → live update
+    document.getElementById('stamp-ws-category').addEventListener('change', () => this.onSettingsChange());
+    document.getElementById('stamp-ws-mainNumber').addEventListener('input', () => this.onSettingsChange());
+    document.getElementById('stamp-ws-size').addEventListener('input', () => {
+      if (this.previewMode) this.updateStampOverlayPosition();
     });
-    wsMainNum.addEventListener('input', () => {
-      document.getElementById('stamp-mainNumber').value = wsMainNum.value;
-      this.updatePreview();
-      this.updateWorkspaceStamp();
-    });
-    wsSize.addEventListener('input', () => {
-      document.getElementById('stamp-size').value = wsSize.value;
-      this.updateWorkspaceStamp();
+    document.getElementById('stamp-ws-position').addEventListener('change', () => {
+      // Reset placements when position preset changes
+      this.stampPlacements = {};
+      if (this.previewMode) this.updateStampOverlayPosition();
     });
 
     // Canvas click to place stamp
-    const canvasWrap = document.getElementById('stamp-ws-canvasWrap');
-    canvasWrap.addEventListener('click', e => this.handleCanvasClick(e));
+    document.getElementById('stamp-ws-canvasWrap').addEventListener('click', e => this.handleCanvasClick(e));
 
     // Drag stamp
     const stampEl = document.getElementById('stamp-ws-stamp');
     stampEl.addEventListener('mousedown', e => this.startDrag(e));
     document.addEventListener('mousemove', e => this.onDrag(e));
     document.addEventListener('mouseup', () => this.endDrag());
-
-    this.updateCategoryLabels();
-    this.updatePreview();
   },
 
-  // ===== Stamp label (existing) =====
+  // ===== Settings change handler =====
+  onSettingsChange() {
+    if (!this.previewMode) return;
+    this.updateWorkspaceStamp();
+    this.updateStampOverlayPosition();
+    this.updatePreviewLabel();
+  },
+
+  // ===== Stamp label =====
   getStampLabel(fileIndex) {
-    const cat = document.getElementById('stamp-category').value;
-    const num = parseInt(document.getElementById('stamp-mainNumber').value) || 1;
+    const cat = document.getElementById('stamp-ws-category').value;
+    const num = parseInt(document.getElementById('stamp-ws-mainNumber').value) || 1;
     const idx = fileIndex || 0;
     if (this.subNumbers.length > 0) {
       const lastSubVal = parseInt(this.subNumbers[this.subNumbers.length - 1].value) || 1;
@@ -104,45 +94,34 @@ const StampTool = {
     }
   },
 
-  updateCategoryLabels() {
-    const cat = document.getElementById('stamp-category').value;
-    const pre = document.getElementById('stamp-labelPre');
-    const post = document.getElementById('stamp-labelPost');
-    if (cat === '資料') { pre.style.display = 'none'; post.style.display = 'none'; }
-    else { pre.style.display = ''; post.style.display = ''; }
+  updatePreviewLabel() {
+    const el = document.getElementById('stamp-ws-previewLabel');
+    if (el) el.textContent = this.getStampLabel(this.currentFileIdx);
   },
 
-  updatePreview() {
-    document.getElementById('stamp-preview').textContent = this.getStampLabel(0);
-    this.updateCategoryLabels();
-    this.updateFileList();
-    document.getElementById('stamp-btnProcess').disabled = this.files.length === 0;
-  },
-
+  // ===== Sub-numbers (workspace) =====
   addSubNumber() {
-    const group = document.getElementById('stamp-subNumberGroup');
-    const wrapper = document.createElement('span');
-    wrapper.className = 'sub-number-group';
-    wrapper.style.display = 'inline-flex'; wrapper.style.alignItems = 'center'; wrapper.style.gap = '4px';
-    const sep = document.createElement('span'); sep.textContent = 'の'; sep.style.fontWeight = '500';
+    const group = document.getElementById('stamp-ws-subNumbers');
+    const wrapper = document.createElement('div');
+    wrapper.className = 'stamp-ws-sub-row';
+    const sep = document.createElement('span'); sep.textContent = 'の'; sep.style.fontWeight = '500'; sep.style.fontSize = '13px';
     const input = document.createElement('input');
     input.type = 'number'; input.min = 1; input.max = 200; input.value = 1;
-    input.className = 'form-input'; input.style.width = '60px'; input.style.textAlign = 'center'; input.style.padding = '6px';
-    input.addEventListener('input', () => this.updatePreview());
+    input.className = 'form-input';
+    input.addEventListener('input', () => this.onSettingsChange());
     const btnRm = document.createElement('button');
-    btnRm.className = 'btn btn-danger btn-sm'; btnRm.textContent = '\u00d7';
-    btnRm.style.padding = '2px 8px'; btnRm.style.minWidth = '24px';
+    btnRm.className = 'btn-rm'; btnRm.textContent = '\u00d7';
     const idx = this.subNumbers.length;
     btnRm.addEventListener('click', () => this.removeSubNumber(idx));
     wrapper.appendChild(sep); wrapper.appendChild(input); wrapper.appendChild(btnRm);
     group.appendChild(wrapper);
     this.subNumbers.push(input);
-    this.updatePreview();
+    this.onSettingsChange();
   },
 
   removeSubNumber(idx) {
-    const group = document.getElementById('stamp-subNumberGroup');
-    const wrappers = group.querySelectorAll('.sub-number-group');
+    const group = document.getElementById('stamp-ws-subNumbers');
+    const wrappers = group.querySelectorAll('.stamp-ws-sub-row');
     group.innerHTML = '';
     this.subNumbers = [];
     wrappers.forEach((w, i) => {
@@ -151,11 +130,12 @@ const StampTool = {
       group.appendChild(w);
       this.subNumbers.push(input);
       const newIdx = this.subNumbers.length - 1;
-      w.querySelector('button').onclick = () => this.removeSubNumber(newIdx);
+      w.querySelector('.btn-rm').onclick = () => this.removeSubNumber(newIdx);
     });
-    this.updatePreview();
+    this.onSettingsChange();
   },
 
+  // ===== File management =====
   addFiles(fileListInput) {
     for (const f of fileListInput) {
       const n = f.name.toLowerCase();
@@ -168,18 +148,11 @@ const StampTool = {
 
   updateFileList() {
     const list = document.getElementById('stamp-fileList');
-    const hint = document.getElementById('stamp-batchHint');
     list.innerHTML = '';
-    if (this.files.length > 1) {
-      hint.style.display = '';
-      hint.textContent = this.subNumbers.length > 0
-        ? '※ 複数ファイル: 枝番が自動で連番になります'
-        : '※ 複数ファイル: 号証番号が自動で連番になります';
-    } else { hint.style.display = 'none'; }
     this.files.forEach((f, i) => {
       const div = document.createElement('div'); div.className = 'file-item';
-      const st = f.status === 'done' ? '\u2713' : f.status === 'processing' ? '...' : f.status === 'error' ? '\u2717' : '';
-      div.innerHTML = `<span class="fname" style="flex:1">${f.file.name}</span><span style="color:#4a6cf7">\u2192</span><span class="file-output-name">${this.getStampLabel(i)}.pdf</span><span class="fsize">${st}</span><button class="fremove" data-idx="${i}">\u00d7</button>`;
+      const size = (f.file.size / 1024).toFixed(0);
+      div.innerHTML = `<span class="fname" style="flex:1">${f.file.name}</span><span class="fsize">${size}KB</span><button class="fremove" data-idx="${i}">\u00d7</button>`;
       list.appendChild(div);
     });
     list.querySelectorAll('.fremove').forEach(b => {
@@ -191,7 +164,7 @@ const StampTool = {
     });
   },
 
-  // ===== Image page size calculation (shared between preview and process) =====
+  // ===== Image page size calculation =====
   calcImagePageSize(imgW, imgH) {
     const A4S = 595.28, A4L = 841.89;
     let pageW, pageH;
@@ -215,11 +188,6 @@ const StampTool = {
     this.currentPageIdx = 0;
     this.zoomLevel = 1.0;
     this.stampPlacements = {};
-
-    // Sync settings to workspace panel
-    document.getElementById('stamp-ws-category').value = document.getElementById('stamp-category').value;
-    document.getElementById('stamp-ws-mainNumber').value = document.getElementById('stamp-mainNumber').value;
-    document.getElementById('stamp-ws-size').value = document.getElementById('stamp-size').value;
 
     // Load all files
     this.pdfDocs = [];
@@ -247,6 +215,7 @@ const StampTool = {
     this.renderThumbnails();
     await this.renderMainPreview();
     this.updateWorkspaceFileInfo();
+    this.updatePreviewLabel();
   },
 
   exitPreview() {
@@ -260,10 +229,8 @@ const StampTool = {
     }
     this.pdfDocs = [];
     this.stampPlacements = {};
-    // Reset file statuses
     this.files.forEach(f => f.status = 'ready');
     this.updateFileList();
-    document.getElementById('stamp-btnProcess').textContent = 'プレビューを開く';
     document.getElementById('stamp-btnProcess').disabled = this.files.length === 0;
   },
 
@@ -298,6 +265,7 @@ const StampTool = {
           this.renderMainPreview();
           this.highlightThumb();
           this.updateWorkspaceFileInfo();
+          this.updatePreviewLabel();
         });
         group.appendChild(thumb);
         this.renderThumbCanvas(doc, pi, canvas, THUMB_W);
@@ -370,7 +338,6 @@ const StampTool = {
     const overlay = document.getElementById('stamp-ws-overlay');
     overlay.style.width = canvas.width + 'px';
     overlay.style.height = canvas.height + 'px';
-    // Position overlay over canvas
     overlay.style.left = canvas.offsetLeft + 'px';
     overlay.style.top = canvas.offsetTop + 'px';
 
@@ -380,7 +347,6 @@ const StampTool = {
   },
 
   updatePageNav() {
-    const doc = this.pdfDocs[this.currentFileIdx];
     const totalPages = this.pdfDocs.reduce((s, d) => s + d.pageCount, 0);
     let currentAbsolute = 0;
     for (let i = 0; i < this.currentFileIdx; i++) currentAbsolute += this.pdfDocs[i].pageCount;
@@ -398,6 +364,7 @@ const StampTool = {
     this.renderMainPreview();
     this.highlightThumb();
     this.updateWorkspaceFileInfo();
+    this.updatePreviewLabel();
   },
 
   nextPage() {
@@ -411,6 +378,7 @@ const StampTool = {
     this.renderMainPreview();
     this.highlightThumb();
     this.updateWorkspaceFileInfo();
+    this.updatePreviewLabel();
   },
 
   zoom(delta) {
@@ -424,7 +392,7 @@ const StampTool = {
     const el = document.getElementById('stamp-ws-fileInfo');
     el.innerHTML = `<div class="fi-name">${doc.file.name}</div>
       <div class="fi-meta">ページ ${this.currentPageIdx + 1} / ${doc.pageCount}</div>
-      <div class="fi-meta">スタンプ: ${this.getStampLabel(this.currentFileIdx)}</div>`;
+      <div class="fi-meta">出力名: ${this.getStampLabel(this.currentFileIdx)}.pdf</div>`;
   },
 
   updateWorkspaceStamp() {
@@ -453,9 +421,8 @@ const StampTool = {
   getDefaultPdfPosition(fileIdx, pageIdx) {
     const doc = this.pdfDocs[fileIdx];
     const ps = doc.pdfPageSizes[pageIdx] || doc.pdfPageSizes[0];
-    const pos = document.getElementById('stamp-position').value;
-    const fontSize = parseInt(document.getElementById('stamp-size').value) || 24;
-    // Estimate stamp dimensions in PDF points
+    const pos = document.getElementById('stamp-ws-position').value;
+    const fontSize = parseInt(document.getElementById('stamp-ws-size').value) || 24;
     const label = this.getStampLabel(fileIdx);
     const estW = label.length * fontSize * 0.7 + 20;
     const estH = fontSize * 1.25 + 20;
@@ -472,7 +439,6 @@ const StampTool = {
   getStampPlacement(fileIdx, pageIdx) {
     const key = fileIdx + '-' + pageIdx;
     if (this.stampPlacements[key]) return this.stampPlacements[key];
-    // Inherit from page 0 of same file
     const key0 = fileIdx + '-0';
     if (pageIdx > 0 && this.stampPlacements[key0]) return this.stampPlacements[key0];
     return this.getDefaultPdfPosition(fileIdx, pageIdx);
@@ -486,7 +452,6 @@ const StampTool = {
     stampEl.style.fontSize = Math.max(8, fontSize * scaleFactor * 0.75) + 'px';
 
     const pos = this.getStampPlacement(this.currentFileIdx, this.currentPageIdx);
-    // pos.y is top of stamp in PDF coords (top = larger y value)
     const canvasPos = this.pdfToCanvas(pos.x, pos.y);
     stampEl.style.left = canvasPos.x + 'px';
     stampEl.style.top = canvasPos.y + 'px';
@@ -499,7 +464,6 @@ const StampTool = {
     const rect = canvas.getBoundingClientRect();
     const cx = e.clientX - rect.left;
     const cy = e.clientY - rect.top;
-    // Check if click is within canvas bounds
     if (cx < 0 || cy < 0 || cx > canvas.width || cy > canvas.height) return;
 
     const pdfPos = this.canvasToPdf(cx, cy);
@@ -514,25 +478,24 @@ const StampTool = {
     e.stopPropagation();
     this.isDragging = true;
     const stampEl = document.getElementById('stamp-ws-stamp');
-    this.dragOffsetX = e.clientX - stampEl.offsetLeft;
-    this.dragOffsetY = e.clientY - stampEl.offsetTop;
+    const overlay = document.getElementById('stamp-ws-overlay');
+    const overlayRect = overlay.getBoundingClientRect();
+    this.dragOffsetX = e.clientX - overlayRect.left - stampEl.offsetLeft;
+    this.dragOffsetY = e.clientY - overlayRect.top - stampEl.offsetTop;
     stampEl.classList.add('dragging');
   },
 
   onDrag(e) {
     if (!this.isDragging) return;
     const stampEl = document.getElementById('stamp-ws-stamp');
-    const canvas = document.getElementById('stamp-ws-canvas');
-    const wrap = document.getElementById('stamp-ws-canvasWrap');
-    const canvasRect = canvas.getBoundingClientRect();
-    const wrapRect = wrap.getBoundingClientRect();
+    const overlay = document.getElementById('stamp-ws-overlay');
+    const overlayRect = overlay.getBoundingClientRect();
 
-    let newLeft = e.clientX - this.dragOffsetX;
-    let newTop = e.clientY - this.dragOffsetY;
+    let newLeft = e.clientX - overlayRect.left - this.dragOffsetX;
+    let newTop = e.clientY - overlayRect.top - this.dragOffsetY;
 
-    // Clamp within canvas bounds (relative to overlay)
-    newLeft = Math.max(0, Math.min(canvas.width - stampEl.offsetWidth, newLeft));
-    newTop = Math.max(0, Math.min(canvas.height - stampEl.offsetHeight, newTop));
+    newLeft = Math.max(0, Math.min(overlayRect.width - stampEl.offsetWidth, newLeft));
+    newTop = Math.max(0, Math.min(overlayRect.height - stampEl.offsetHeight, newTop));
 
     stampEl.style.left = newLeft + 'px';
     stampEl.style.top = newTop + 'px';
@@ -550,11 +513,10 @@ const StampTool = {
     const key = this.currentFileIdx + '-' + this.currentPageIdx;
     this.stampPlacements[key] = pdfPos;
 
-    // Small delay to prevent click event from firing
     setTimeout(() => { this.isDragging = false; }, 50);
   },
 
-  // ===== Stamp image creation (existing) =====
+  // ===== Stamp image creation =====
   async createStampImageBytes(label, fontSize) {
     await document.fonts.ready;
     const scale = 3;
@@ -587,12 +549,12 @@ const StampTool = {
     return pdfDoc;
   },
 
-  // ===== Process (enhanced with custom positions + all pages) =====
+  // ===== Process =====
   async process() {
     const btn = document.getElementById('stamp-ws-process');
     btn.disabled = true; btn.textContent = '処理中...';
     const fontSize = parseInt(document.getElementById('stamp-ws-size').value) || 24;
-    const pos = document.getElementById('stamp-position').value;
+    const pos = document.getElementById('stamp-ws-position').value;
 
     for (let i = 0; i < this.files.length; i++) {
       const label = this.getStampLabel(i);
@@ -610,11 +572,10 @@ const StampTool = {
           const { width, height } = pages[pi].getSize();
           let x, y;
 
-          // Check for custom placement
           const placement = this.stampPlacements[i + '-' + pi] || (pi > 0 ? this.stampPlacements[i + '-0'] : null);
           if (placement) {
             x = placement.x;
-            y = placement.y - stamp.displayHeight; // PDF drawImage uses bottom-left corner
+            y = placement.y - stamp.displayHeight;
           } else {
             const m = 12;
             switch (pos) {
