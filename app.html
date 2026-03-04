@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Legal AI - 弁護士向けAIツール</title>
+<link rel="stylesheet" href="css/style.css">
+<script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+</head>
+<body>
+
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="sidebar-brand">Legal AI<small>弁護士向けAIツール</small></div>
+  <div class="sidebar-nav">
+    <div class="nav-section">AI分析</div>
+    <a class="nav-item active" data-tool="summary" href="#summary">
+      <span class="icon">&#128203;</span><span>案件要約</span>
+    </a>
+    <a class="nav-item" data-tool="analysis" href="#analysis">
+      <span class="icon">&#128269;</span><span>書面分析</span>
+    </a>
+    <a class="nav-item" data-tool="draft" href="#draft">
+      <span class="icon">&#128221;</span><span>準備書面</span>
+    </a>
+    <a class="nav-item" data-tool="complaint" href="#complaint">
+      <span class="icon">&#128220;</span><span>訴状生成</span>
+    </a>
+    <a class="nav-item" data-tool="precedent" href="#precedent">
+      <span class="icon">&#128214;</span><span>判例検索</span>
+    </a>
+
+    <div class="nav-section">ツール</div>
+    <a class="nav-item" data-tool="stamp" href="#stamp">
+      <span class="icon">&#128206;</span><span>証拠スタンプ</span>
+    </a>
+    <a class="nav-item" data-tool="calculator" href="#calculator">
+      <span class="icon">&#128178;</span><span>損害計算</span>
+    </a>
+  </div>
+  <div class="sidebar-footer">Powered by Gemini 2.5 Pro</div>
+</nav>
+
+<!-- Main Content -->
+<div class="main">
+
+  <!-- ===== 案件要約 ===== -->
+  <div class="page active" id="page-summary">
+    <div class="page-header">
+      <h2>案件要約・時系列生成</h2>
+      <p>案件資料をアップロードすると、要約と時系列表を自動生成します</p>
+    </div>
+    <div class="card">
+      <div class="section-title">案件資料（PDF / JPEG / PNG）</div>
+      <div class="dropzone" id="summary-dropzone">
+        <span class="dropzone-icon">&#128206;</span>
+        ファイル or フォルダをドラッグ＆ドロップ<br>
+        <span style="font-size:12px;color:#aaa">またはクリックして選択（複数可）</span>
+        <input type="file" id="summary-fileInput" accept=".pdf,.jpg,.jpeg,.png" multiple>
+        <input type="file" id="summary-folderInput" webkitdirectory style="display:none">
+      </div>
+      <div style="text-align:center;margin-top:-8px;margin-bottom:12px">
+        <button class="btn btn-outline btn-sm" id="summary-btnFolder" style="font-size:12px">フォルダを選択</button>
+      </div>
+      <div class="file-list" id="summary-fileList"></div>
+      <div class="file-stats" id="summary-fileStats"></div>
+      <button class="btn btn-primary btn-full btn-lg" id="summary-btnGenerate" disabled>要約を生成</button>
+    </div>
+    <div class="card result-area" id="summary-resultArea">
+      <div class="section-title">生成結果</div>
+      <div id="summary-loading" class="loading" style="display:none"><div class="spinner"></div><div class="loading-text">分析中...</div></div>
+      <div class="result-content" id="summary-resultContent"></div>
+      <div id="summary-error" class="error-msg" style="display:none"></div>
+      <div class="result-actions" id="summary-resultActions" style="display:none">
+        <button class="btn btn-success" id="summary-btnWord">Wordダウンロード</button>
+        <button class="btn btn-outline" id="summary-btnCopy">テキストをコピー</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 相手方書面分析 ===== -->
+  <div class="page" id="page-analysis">
+    <div class="page-header">
+      <h2>相手方書面の分析</h2>
+      <p>相手方の準備書面から矛盾点・弱点・反論ポイントを抽出します</p>
+    </div>
+    <div class="card">
+      <div class="section-title">相手方の書面・資料</div>
+      <div class="dropzone" id="analysis-dropzone">
+        <span class="dropzone-icon">&#128269;</span>
+        相手方の書面をドラッグ＆ドロップ<br>
+        <span style="font-size:12px;color:#aaa">自分の証拠も一緒にアップロード可</span>
+        <input type="file" id="analysis-fileInput" accept=".pdf,.jpg,.jpeg,.png" multiple>
+        <input type="file" id="analysis-folderInput" webkitdirectory style="display:none">
+      </div>
+      <div style="text-align:center;margin-top:-8px;margin-bottom:12px">
+        <button class="btn btn-outline btn-sm" id="analysis-btnFolder" style="font-size:12px">フォルダを選択</button>
+      </div>
+      <div class="file-list" id="analysis-fileList"></div>
+      <div class="file-stats" id="analysis-fileStats"></div>
+      <button class="btn btn-primary btn-full btn-lg" id="analysis-btnGenerate" disabled>分析開始</button>
+    </div>
+    <div class="card result-area" id="analysis-resultArea">
+      <div class="section-title">分析結果</div>
+      <div id="analysis-loading" class="loading" style="display:none"><div class="spinner"></div><div class="loading-text">分析中...</div></div>
+      <div class="result-content" id="analysis-resultContent"></div>
+      <div id="analysis-error" class="error-msg" style="display:none"></div>
+      <div class="result-actions" id="analysis-resultActions" style="display:none">
+        <button class="btn btn-success" id="analysis-btnWord">Wordダウンロード</button>
+        <button class="btn btn-outline" id="analysis-btnCopy">テキストをコピー</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 準備書面ドラフト ===== -->
+  <div class="page" id="page-draft">
+    <div class="page-header">
+      <h2>準備書面ドラフト生成</h2>
+      <p>案件資料から準備書面の下書きを自動生成します</p>
+    </div>
+    <div class="card">
+      <div class="section-title">案件資料</div>
+      <div class="dropzone" id="draft-dropzone">
+        <span class="dropzone-icon">&#128221;</span>
+        案件資料をドラッグ＆ドロップ<br>
+        <span style="font-size:12px;color:#aaa">証拠書類・相手方書面など</span>
+        <input type="file" id="draft-fileInput" accept=".pdf,.jpg,.jpeg,.png" multiple>
+        <input type="file" id="draft-folderInput" webkitdirectory style="display:none">
+      </div>
+      <div style="text-align:center;margin-top:-8px;margin-bottom:12px">
+        <button class="btn btn-outline btn-sm" id="draft-btnFolder" style="font-size:12px">フォルダを選択</button>
+      </div>
+      <div class="file-list" id="draft-fileList"></div>
+      <div class="file-stats" id="draft-fileStats"></div>
+      <div class="form-group" style="margin-top:12px">
+        <label>書面の目的・ポイント（任意）</label>
+        <textarea class="form-input" id="draft-purpose" placeholder="例: 被告の主張する消滅時効の援用に対する反論を中心に..."></textarea>
+      </div>
+      <button class="btn btn-primary btn-full btn-lg" id="draft-btnGenerate" disabled>準備書面を生成</button>
+    </div>
+    <div class="card result-area" id="draft-resultArea">
+      <div class="section-title">生成結果</div>
+      <div id="draft-loading" class="loading" style="display:none"><div class="spinner"></div><div class="loading-text">生成中...</div></div>
+      <div class="result-content" id="draft-resultContent"></div>
+      <div id="draft-error" class="error-msg" style="display:none"></div>
+      <div class="result-actions" id="draft-resultActions" style="display:none">
+        <button class="btn btn-success" id="draft-btnWord">Wordダウンロード</button>
+        <button class="btn btn-outline" id="draft-btnCopy">テキストをコピー</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 訴状生成 ===== -->
+  <div class="page" id="page-complaint">
+    <div class="page-header">
+      <h2>訴状・申立書テンプレート生成</h2>
+      <p>案件資料から訴状の雛形を自動生成します</p>
+    </div>
+    <div class="card">
+      <div class="section-title">案件資料</div>
+      <div class="dropzone" id="complaint-dropzone">
+        <span class="dropzone-icon">&#128220;</span>
+        案件資料をドラッグ＆ドロップ<br>
+        <span style="font-size:12px;color:#aaa">契約書・請求書・証拠など</span>
+        <input type="file" id="complaint-fileInput" accept=".pdf,.jpg,.jpeg,.png" multiple>
+        <input type="file" id="complaint-folderInput" webkitdirectory style="display:none">
+      </div>
+      <div style="text-align:center;margin-top:-8px;margin-bottom:12px">
+        <button class="btn btn-outline btn-sm" id="complaint-btnFolder" style="font-size:12px">フォルダを選択</button>
+      </div>
+      <div class="file-list" id="complaint-fileList"></div>
+      <div class="file-stats" id="complaint-fileStats"></div>
+      <div class="form-group" style="margin-top:12px">
+        <label>案件の種類（任意）</label>
+        <input class="form-input" id="complaint-caseType" placeholder="例: 貸金請求、損害賠償請求、建物明渡請求...">
+      </div>
+      <button class="btn btn-primary btn-full btn-lg" id="complaint-btnGenerate" disabled>訴状を生成</button>
+    </div>
+    <div class="card result-area" id="complaint-resultArea">
+      <div class="section-title">生成結果</div>
+      <div id="complaint-loading" class="loading" style="display:none"><div class="spinner"></div><div class="loading-text">生成中...</div></div>
+      <div class="result-content" id="complaint-resultContent"></div>
+      <div id="complaint-error" class="error-msg" style="display:none"></div>
+      <div class="result-actions" id="complaint-resultActions" style="display:none">
+        <button class="btn btn-success" id="complaint-btnWord">Wordダウンロード</button>
+        <button class="btn btn-outline" id="complaint-btnCopy">テキストをコピー</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 判例サジェスト ===== -->
+  <div class="page" id="page-precedent">
+    <div class="page-header">
+      <h2>判例サジェスト</h2>
+      <p>案件資料から関連する判例キーワード・法的論点を提示します</p>
+    </div>
+    <div class="card">
+      <div class="section-title">案件資料</div>
+      <div class="dropzone" id="precedent-dropzone">
+        <span class="dropzone-icon">&#128214;</span>
+        案件資料をドラッグ＆ドロップ<br>
+        <span style="font-size:12px;color:#aaa">要約結果のWordファイルでもOK</span>
+        <input type="file" id="precedent-fileInput" accept=".pdf,.jpg,.jpeg,.png" multiple>
+        <input type="file" id="precedent-folderInput" webkitdirectory style="display:none">
+      </div>
+      <div style="text-align:center;margin-top:-8px;margin-bottom:12px">
+        <button class="btn btn-outline btn-sm" id="precedent-btnFolder" style="font-size:12px">フォルダを選択</button>
+      </div>
+      <div class="file-list" id="precedent-fileList"></div>
+      <div class="file-stats" id="precedent-fileStats"></div>
+      <button class="btn btn-primary btn-full btn-lg" id="precedent-btnGenerate" disabled>判例を検索</button>
+    </div>
+    <div class="card result-area" id="precedent-resultArea">
+      <div class="section-title">検索結果</div>
+      <div id="precedent-loading" class="loading" style="display:none"><div class="spinner"></div><div class="loading-text">検索中...</div></div>
+      <div class="result-content" id="precedent-resultContent"></div>
+      <div id="precedent-error" class="error-msg" style="display:none"></div>
+      <div class="result-actions" id="precedent-resultActions" style="display:none">
+        <button class="btn btn-outline" id="precedent-btnCopy">テキストをコピー</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 証拠スタンプ ===== -->
+  <div class="page" id="page-stamp">
+    <div class="page-header">
+      <h2>証拠スタンプ・リネーム</h2>
+      <p>PDF・画像に証拠番号スタンプを押してPDF出力します</p>
+    </div>
+    <div class="card">
+      <div class="section-title">スタンプ設定</div>
+      <div class="stamp-config">
+        <select class="form-input" id="stamp-category" style="width:auto">
+          <option value="甲">甲</option><option value="乙">乙</option><option value="丙">丙</option><option value="資料">資料</option>
+        </select>
+        <span id="stamp-labelPre" style="font-weight:500">第</span>
+        <input type="number" class="form-input" id="stamp-mainNumber" min="1" max="200" value="1" style="width:70px;text-align:center">
+        <span id="stamp-labelPost" style="font-weight:500">号証</span>
+        <span id="stamp-subNumberGroup"></span>
+        <button class="btn btn-primary btn-sm" id="stamp-btnAddSub">＋ 枝番</button>
+      </div>
+      <div class="stamp-preview-box">
+        <div class="stamp-preview" id="stamp-preview">甲第1号証</div>
+      </div>
+      <div class="stamp-config">
+        <label style="font-size:13px;color:#555">位置:</label>
+        <select class="form-input" id="stamp-position" style="width:auto">
+          <option value="top-right" selected>右上</option><option value="top-left">左上</option>
+          <option value="bottom-right">右下</option><option value="bottom-left">左下</option>
+        </select>
+        <label style="font-size:13px;color:#555">文字サイズ:</label>
+        <input type="number" class="form-input" id="stamp-size" min="10" max="72" value="24" style="width:70px;text-align:center">
+        <span style="font-size:13px;color:#888">pt</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-title">ファイル（PDF / JPEG / PNG）</div>
+      <div class="dropzone" id="stamp-dropzone">
+        <span class="dropzone-icon">&#128196;</span>
+        ファイルをドラッグ＆ドロップ<br>
+        <span style="font-size:12px;color:#aaa">またはクリックして選択（複数可）</span>
+        <input type="file" id="stamp-fileInput" accept=".pdf,.jpg,.jpeg,.png" multiple>
+      </div>
+      <div class="file-stats" id="stamp-batchHint" style="display:none"></div>
+      <div class="file-list" id="stamp-fileList"></div>
+      <button class="btn btn-primary btn-full btn-lg" id="stamp-btnProcess" disabled>スタンプを押して出力</button>
+    </div>
+  </div>
+
+  <!-- ===== 損害計算 ===== -->
+  <div class="page" id="page-calculator">
+    <div class="page-header">
+      <h2>損害計算・遅延損害金</h2>
+      <p>元金・利率・期間から遅延損害金を計算します</p>
+    </div>
+    <div class="card">
+      <div class="form-group">
+        <label>元金（円）</label>
+        <input type="number" class="form-input" id="calc-principal" placeholder="例: 1000000">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>利率（年%）</label>
+          <input type="number" class="form-input" id="calc-rate" value="3" step="0.1" min="0" max="100">
+        </div>
+        <div class="form-group">
+          <label>起算日</label>
+          <input type="date" class="form-input" id="calc-startDate">
+        </div>
+        <div class="form-group">
+          <label>終了日</label>
+          <input type="date" class="form-input" id="calc-endDate">
+        </div>
+      </div>
+      <div style="font-size:11px;color:#888;margin-bottom:12px">
+        ※ 民法改正後（2020年4月1日〜）の法定利率: 年3%
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-primary btn-lg" id="calc-btnCalc" style="flex:1">計算する</button>
+        <button class="btn btn-outline btn-lg" id="calc-btnClear">クリア</button>
+      </div>
+      <div id="calc-result" style="display:none"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Scripts -->
+<script src="js/prompts.js"></script>
+<script src="js/markdown.js"></script>
+<script src="js/api.js"></script>
+<script src="js/router.js"></script>
+<script src="js/tools/summary.js"></script>
+<script src="js/tools/analysis.js"></script>
+<script src="js/tools/draft.js"></script>
+<script src="js/tools/precedent.js"></script>
+<script src="js/tools/complaint.js"></script>
+<script src="js/tools/stamp.js"></script>
+<script src="js/tools/calculator.js"></script>
+</body>
+</html>
