@@ -9,25 +9,73 @@
 </head>
 <body>
 
+<!-- ===== Auth Page ===== -->
+<div class="auth-page" id="auth-page">
+  <div class="auth-container">
+    <div class="auth-brand">Legal AI<small>弁護士向けAIツール</small></div>
+
+    <!-- Login -->
+    <div id="auth-loginBox">
+      <form id="auth-loginForm">
+        <div class="form-group">
+          <label>メールアドレス</label>
+          <input type="email" class="form-input" id="auth-loginEmail" placeholder="example@lawfirm.jp" required>
+        </div>
+        <div class="form-group">
+          <label>パスワード</label>
+          <input type="password" class="form-input" id="auth-loginPassword" placeholder="8文字以上" required>
+        </div>
+        <div id="auth-loginError" class="error-msg" style="display:none"></div>
+        <button type="submit" class="btn btn-primary btn-full btn-lg" id="auth-loginBtn">ログイン</button>
+      </form>
+      <div class="auth-switch">アカウントをお持ちでない方は <a href="#" id="auth-showSignup">新規登録</a></div>
+    </div>
+
+    <!-- Signup -->
+    <div id="auth-signupBox" style="display:none">
+      <form id="auth-signupForm">
+        <div class="form-group">
+          <label>氏名</label>
+          <input type="text" class="form-input" id="auth-signupName" placeholder="山田 太郎">
+        </div>
+        <div class="form-group">
+          <label>メールアドレス</label>
+          <input type="email" class="form-input" id="auth-signupEmail" placeholder="example@lawfirm.jp" required>
+        </div>
+        <div class="form-group">
+          <label>パスワード</label>
+          <input type="password" class="form-input" id="auth-signupPassword" placeholder="8文字以上" required minlength="8">
+        </div>
+        <div id="auth-signupError" class="error-msg" style="display:none"></div>
+        <button type="submit" class="btn btn-primary btn-full btn-lg" id="auth-signupBtn">新規登録</button>
+      </form>
+      <div class="auth-switch">アカウントをお持ちの方は <a href="#" id="auth-showLogin">ログイン</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== App (hidden until login) ===== -->
+<div id="app-main" style="display:none">
+
 <!-- Sidebar -->
 <nav class="sidebar">
   <div class="sidebar-brand">Legal AI<small>弁護士向けAIツール</small></div>
   <div class="sidebar-nav">
     <div class="nav-section">AI分析</div>
     <a class="nav-item active" data-tool="summary" href="#summary">
-      <span class="icon">&#128203;</span><span>案件要約</span>
+      <span class="icon">&#128203;</span><span>案件要約</span><span class="usage-badge"></span>
     </a>
     <a class="nav-item" data-tool="analysis" href="#analysis">
-      <span class="icon">&#128269;</span><span>書面分析</span>
+      <span class="icon">&#128269;</span><span>書面分析</span><span class="usage-badge"></span>
     </a>
     <a class="nav-item" data-tool="draft" href="#draft">
-      <span class="icon">&#128221;</span><span>準備書面</span>
+      <span class="icon">&#128221;</span><span>準備書面</span><span class="usage-badge"></span>
     </a>
     <a class="nav-item" data-tool="complaint" href="#complaint">
-      <span class="icon">&#128220;</span><span>訴状生成</span>
+      <span class="icon">&#128220;</span><span>訴状生成</span><span class="usage-badge"></span>
     </a>
     <a class="nav-item" data-tool="precedent" href="#precedent">
-      <span class="icon">&#128214;</span><span>判例検索</span>
+      <span class="icon">&#128214;</span><span>判例検索</span><span class="usage-badge"></span>
     </a>
 
     <div class="nav-section">ツール</div>
@@ -38,7 +86,11 @@
       <span class="icon">&#128178;</span><span>損害計算</span>
     </a>
   </div>
-  <div class="sidebar-footer">Powered by Gemini 2.5 Pro</div>
+  <div class="sidebar-user">
+    <div id="sidebar-userEmail" class="user-email"></div>
+    <div id="sidebar-userPlan" class="user-plan"></div>
+    <a href="#" id="sidebar-logout" class="logout-link">ログアウト</a>
+  </div>
 </nav>
 
 <!-- Main Content -->
@@ -237,7 +289,7 @@
         <input type="number" class="form-input" id="stamp-mainNumber" min="1" max="200" value="1" style="width:70px;text-align:center">
         <span id="stamp-labelPost" style="font-weight:500">号証</span>
         <span id="stamp-subNumberGroup"></span>
-        <button class="btn btn-primary btn-sm" id="stamp-btnAddSub">＋ 枝番</button>
+        <button class="btn btn-primary btn-sm" id="stamp-btnAddSub">+ 枝番</button>
       </div>
       <div class="stamp-preview-box">
         <div class="stamp-preview" id="stamp-preview">甲第1号証</div>
@@ -304,12 +356,15 @@
   </div>
 
 </div>
+</div><!-- /app-main -->
 
 <!-- Scripts -->
 <script src="js/prompts.js"></script>
 <script src="js/markdown.js"></script>
 <script src="js/api.js"></script>
 <script src="js/router.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/usage.js"></script>
 <script src="js/tools/summary.js"></script>
 <script src="js/tools/analysis.js"></script>
 <script src="js/tools/draft.js"></script>
@@ -317,5 +372,8 @@
 <script src="js/tools/complaint.js"></script>
 <script src="js/tools/stamp.js"></script>
 <script src="js/tools/calculator.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => Auth.init());
+</script>
 </body>
 </html>

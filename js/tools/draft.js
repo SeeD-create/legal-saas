@@ -98,7 +98,7 @@ const DraftTool = {
       this.rawResult = await callWorkerStream(PROMPTS.system, parts, text => {
         loading.style.display = 'none';
         content.innerHTML = renderMarkdown(text);
-      });
+      }, 'draft');
       loading.style.display = 'none';
       content.innerHTML = renderMarkdown(this.rawResult);
       actions.style.display = '';

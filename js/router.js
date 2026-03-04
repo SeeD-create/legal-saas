@@ -2,14 +2,30 @@
 const Router = {
   currentTool: null,
   tools: {},
+  initialized: false,
 
   register(name, tool) {
     this.tools[name] = tool;
   },
 
   init() {
+    if (this.initialized) { this.navigate(); return; }
+    this.initialized = true;
+
+    // Setup nav click handlers
+    document.querySelectorAll('.nav-item[data-tool]').forEach(el => {
+      el.addEventListener('click', e => {
+        e.preventDefault();
+        if (el.classList.contains('locked')) return;
+        location.hash = el.dataset.tool;
+      });
+    });
+
     window.addEventListener('hashchange', () => this.navigate());
     this.navigate();
+
+    // Fetch usage data
+    Usage.fetch().then(() => Usage.updateSidebarBadges());
   },
 
   navigate() {
@@ -33,15 +49,3 @@ const Router = {
     this.currentTool = toolName;
   }
 };
-
-// Setup nav click handlers
-document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.nav-item[data-tool]').forEach(el => {
-    el.addEventListener('click', e => {
-      e.preventDefault();
-      if (el.classList.contains('locked')) return;
-      location.hash = el.dataset.tool;
-    });
-  });
-  Router.init();
-});

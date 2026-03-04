@@ -95,7 +95,7 @@ const AnalysisTool = {
       this.rawResult = await callWorkerStream(PROMPTS.system, parts, text => {
         loading.style.display = 'none';
         content.innerHTML = renderMarkdown(text);
-      });
+      }, 'analysis');
       loading.style.display = 'none';
       content.innerHTML = renderMarkdown(this.rawResult);
       actions.style.display = '';

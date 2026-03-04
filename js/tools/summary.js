@@ -103,7 +103,7 @@ const SummaryTool = {
       this.rawResult = await callWorkerStream(PROMPTS.system, parts, text => {
         loading.style.display = 'none';
         content.innerHTML = renderMarkdown(text);
-      });
+      }, 'summaryAnalysis');
       loading.style.display = 'none';
       content.innerHTML = renderMarkdown(this.rawResult);
       actions.style.display = '';

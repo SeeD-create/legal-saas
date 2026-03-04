@@ -85,16 +85,21 @@ async function buildFileParts(files) {
 }
 
 // Streaming API call via Worker
-async function callWorkerStream(systemPrompt, userParts, onChunk) {
+async function callWorkerStream(systemPrompt, userParts, onChunk, toolType) {
   const body = {
     system_instruction: { parts: [{ text: systemPrompt }] },
     contents: [{ parts: userParts }],
-    generationConfig: { maxOutputTokens: 16384, temperature: 0.1 }
+    generationConfig: { maxOutputTokens: 16384, temperature: 0.1 },
+    toolType: toolType || 'summary'
   };
 
-  const resp = await fetch(WORKER_URL, {
+  const headers = { 'Content-Type': 'application/json' };
+  const token = Auth.getToken();
+  if (token) headers['Authorization'] = 'Bearer ' + token;
+
+  const resp = await fetch(WORKER_URL + '/api/generate', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(body)
   });
 
