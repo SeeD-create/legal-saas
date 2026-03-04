@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Legal AI - 弁護士向けAI業務支援ツール</title>
+<meta name="description" content="証拠整理・案件要約・書面分析・準備書面作成をAIで効率化。弁護士の業務を変える7つのツール。">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI','Yu Gothic UI','Meiryo',sans-serif;color:#222;line-height:1.7}
+a{text-decoration:none;color:inherit}
+
+/* Header */
+.header{position:fixed;top:0;left:0;right:0;z-index:100;padding:16px 40px;display:flex;align-items:center;justify-content:space-between;background:rgba(26,26,46,.95);backdrop-filter:blur(8px)}
+.logo{font-size:18px;font-weight:700;color:#fff}
+.logo small{font-size:11px;font-weight:400;color:rgba(255,255,255,.5);margin-left:8px}
+.header-links{display:flex;align-items:center;gap:24px}
+.header-links a{color:rgba(255,255,255,.8);font-size:14px;font-weight:500}
+.header-links a:hover{color:#fff}
+.btn{padding:10px 24px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:#4a6cf7;color:#fff}
+.btn-primary:hover{background:#3a5ce5}
+.btn-outline-white{background:transparent;color:#fff;border:1.5px solid rgba(255,255,255,.4)}
+.btn-outline-white:hover{background:rgba(255,255,255,.1)}
+.btn-lg{padding:16px 36px;font-size:16px}
+
+/* Hero */
+.hero{background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);color:#fff;padding:140px 40px 80px;text-align:center}
+.hero h1{font-size:42px;font-weight:800;margin-bottom:16px;line-height:1.3}
+.hero h1 span{color:#4a6cf7}
+.hero p{font-size:18px;color:rgba(255,255,255,.7);max-width:600px;margin:0 auto 32px}
+.hero-badges{display:flex;gap:16px;justify-content:center;margin-top:24px;flex-wrap:wrap}
+.hero-badge{background:rgba(255,255,255,.1);padding:6px 16px;border-radius:20px;font-size:13px;color:rgba(255,255,255,.8)}
+
+/* Features */
+.features{padding:80px 40px;max-width:1100px;margin:0 auto}
+.features h2{text-align:center;font-size:28px;margin-bottom:12px;color:#1a1a2e}
+.features .subtitle{text-align:center;font-size:15px;color:#888;margin-bottom:48px}
+.feature-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:24px}
+.feature-card{background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);padding:28px;transition:transform .2s}
+.feature-card:hover{transform:translateY(-4px)}
+.feature-icon{font-size:32px;margin-bottom:12px}
+.feature-card h3{font-size:16px;font-weight:700;color:#1a1a2e;margin-bottom:8px}
+.feature-card p{font-size:13px;color:#666;line-height:1.7}
+.feature-tag{display:inline-block;font-size:11px;padding:2px 8px;border-radius:4px;font-weight:600;margin-top:8px}
+.tag-ai{background:#eef2ff;color:#4a6cf7}
+.tag-free{background:#e8f5e9;color:#27ae60}
+
+/* Pricing */
+.pricing-section{padding:80px 40px;background:#f8f9fb}
+.pricing-section h2{text-align:center;font-size:28px;margin-bottom:12px;color:#1a1a2e}
+.pricing-section .subtitle{text-align:center;font-size:15px;color:#888;margin-bottom:48px}
+.price-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;max-width:960px;margin:0 auto}
+.price-card{background:#fff;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);padding:32px;text-align:center;position:relative;border:2px solid transparent}
+.price-card.popular{border-color:#4a6cf7}
+.price-badge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:#4a6cf7;color:#fff;padding:3px 18px;border-radius:12px;font-size:12px;font-weight:600}
+.price-name{font-size:20px;font-weight:700;color:#1a1a2e;margin-bottom:4px}
+.price-amount{font-size:36px;font-weight:800;color:#1a1a2e;margin-bottom:4px}
+.price-amount span{font-size:14px;font-weight:400;color:#888}
+.price-note{font-size:12px;color:#888;margin-bottom:20px}
+.price-features{list-style:none;text-align:left;margin-bottom:24px;font-size:13px}
+.price-features li{padding:6px 0;border-bottom:1px solid #f0f2f5;color:#333}
+.price-features li::before{content:'\2713';margin-right:8px;color:#27ae60;font-weight:700}
+.price-features li.no::before{content:'\2014';color:#ccc}
+.price-features li.no{color:#bbb}
+
+/* Security */
+.security{padding:60px 40px;max-width:800px;margin:0 auto;text-align:center}
+.security h2{font-size:24px;margin-bottom:16px;color:#1a1a2e}
+.security p{font-size:14px;color:#666;line-height:1.8}
+.security-badges{display:flex;gap:24px;justify-content:center;margin-top:24px;flex-wrap:wrap}
+.sec-badge{background:#f8f9fb;padding:12px 20px;border-radius:8px;font-size:13px;color:#555}
+
+/* CTA */
+.cta{padding:80px 40px;background:linear-gradient(135deg,#1a1a2e 0%,#0f3460 100%);color:#fff;text-align:center}
+.cta h2{font-size:28px;margin-bottom:12px}
+.cta p{font-size:15px;color:rgba(255,255,255,.7);margin-bottom:28px}
+
+/* Footer */
+.footer{padding:24px 40px;background:#1a1a2e;color:rgba(255,255,255,.4);text-align:center;font-size:12px}
+
+/* Responsive */
+@media(max-width:768px){
+  .header{padding:12px 16px}
+  .hero{padding:100px 16px 60px}
+  .hero h1{font-size:26px}
+  .hero p{font-size:15px}
+  .features,.pricing-section,.security,.cta{padding:48px 16px}
+  .price-grid{grid-template-columns:1fr}
+  .feature-grid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="logo">Legal AI<small>弁護士向けAIツール</small></div>
+  <div class="header-links">
+    <a href="#features">機能</a>
+    <a href="#pricing">料金</a>
+    <a href="app.html" class="btn btn-outline-white">ログイン</a>
+  </div>
+</header>
+
+<!-- Hero -->
+<section class="hero">
+  <h1>弁護士の業務を<span>AIで加速</span>する</h1>
+  <p>証拠整理、案件要約、相手方書面分析、準備書面作成。<br>面倒な事務作業をAIが効率化し、本来の法律業務に集中できます。</p>
+  <a href="app.html" class="btn btn-primary btn-lg">無料で始める</a>
+  <div class="hero-badges">
+    <span class="hero-badge">Gemini 2.5 Pro搭載</span>
+    <span class="hero-badge">14日間無料トライアル</span>
+    <span class="hero-badge">クレジットカード不要</span>
+  </div>
+</section>
+
+<!-- Features -->
+<section class="features" id="features">
+  <h2>7つの業務支援ツール</h2>
+  <p class="subtitle">全ての機能をひとつのプラットフォームで</p>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="feature-icon">&#128203;</div>
+      <h3>案件要約・時系列生成</h3>
+      <p>案件資料（PDF・画像）をアップロードするだけで、案件の要約と時系列表を自動生成。数十ページの書類も数分で整理。</p>
+      <span class="feature-tag tag-ai">AI機能</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#128269;</div>
+      <h3>相手方書面の分析</h3>
+      <p>相手方の準備書面から矛盾点・弱点を自動抽出。反論すべきポイントと必要な追加証拠を提案します。</p>
+      <span class="feature-tag tag-ai">AI機能</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#128221;</div>
+      <h3>準備書面ドラフト生成</h3>
+      <p>案件資料から準備書面の下書きを自動作成。裁判所提出書式に沿った構成で、証拠番号も自動付与。</p>
+      <span class="feature-tag tag-ai">AI機能</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#128220;</div>
+      <h3>訴状テンプレート生成</h3>
+      <p>案件情報から訴状の雛形を自動生成。当事者の表示、請求の趣旨、請求の原因を正式書式で作成。</p>
+      <span class="feature-tag tag-ai">AI機能</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#128214;</div>
+      <h3>判例サジェスト</h3>
+      <p>案件内容から関連する判例の検索キーワード、法的論点、参照すべき条文を提示。判例調査の出発点に。</p>
+      <span class="feature-tag tag-ai">AI機能</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#128206;</div>
+      <h3>証拠スタンプ・リネーム</h3>
+      <p>PDF・画像に「甲第○号証」スタンプを自動付与してPDF出力。複数ファイル一括処理・連番対応。</p>
+      <span class="feature-tag tag-free">無料ツール</span>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&#128178;</div>
+      <h3>損害計算・遅延損害金</h3>
+      <p>元金・利率・期間を入力するだけで遅延損害金を自動計算。民法改正後の法定利率にも対応。</p>
+      <span class="feature-tag tag-free">無料ツール</span>
+    </div>
+  </div>
+</section>
+
+<!-- Pricing -->
+<section class="pricing-section" id="pricing">
+  <h2>料金プラン</h2>
+  <p class="subtitle">14日間の無料トライアル付き。クレジットカード不要で今すぐ始められます。</p>
+  <div class="price-grid">
+    <div class="price-card">
+      <div class="price-name">ライト</div>
+      <div class="price-amount">&yen;3,300<span>/月</span></div>
+      <div class="price-note">税込</div>
+      <ul class="price-features">
+        <li>案件要約: 月10件</li>
+        <li>証拠スタンプ: 無制限</li>
+        <li>損害計算: 無制限</li>
+        <li class="no">書面分析</li>
+        <li class="no">準備書面</li>
+        <li class="no">訴状生成</li>
+        <li class="no">判例検索</li>
+      </ul>
+      <a href="app.html" class="btn btn-outline-dark" style="width:100%;justify-content:center;border:1.5px solid #ccc;border-radius:8px;color:#555">ライトを選択</a>
+    </div>
+    <div class="price-card popular">
+      <div class="price-badge">おすすめ</div>
+      <div class="price-name">スタンダード</div>
+      <div class="price-amount">&yen;9,900<span>/月</span></div>
+      <div class="price-note">税込</div>
+      <ul class="price-features">
+        <li>案件要約: 月50件</li>
+        <li>書面分析: 月30件</li>
+        <li>準備書面: 月20件</li>
+        <li>訴状生成: 月10件</li>
+        <li>証拠スタンプ: 無制限</li>
+        <li>損害計算: 無制限</li>
+        <li class="no">判例検索</li>
+      </ul>
+      <a href="app.html" class="btn btn-primary" style="width:100%;justify-content:center">スタンダードを選択</a>
+    </div>
+    <div class="price-card">
+      <div class="price-name">プロ</div>
+      <div class="price-amount">&yen;19,800<span>/月</span></div>
+      <div class="price-note">税込</div>
+      <ul class="price-features">
+        <li>全AI機能: 無制限</li>
+        <li>案件要約: 無制限</li>
+        <li>書面分析: 無制限</li>
+        <li>準備書面: 無制限</li>
+        <li>訴状生成: 無制限</li>
+        <li>判例検索: 無制限</li>
+        <li>全ツール: 無制限</li>
+      </ul>
+      <a href="app.html" class="btn btn-outline-dark" style="width:100%;justify-content:center;border:1.5px solid #ccc;border-radius:8px;color:#555">プロを選択</a>
+    </div>
+  </div>
+</section>
+
+<!-- Security -->
+<section class="security">
+  <h2>セキュリティへの取り組み</h2>
+  <p>お客様の大切なデータを守るため、通信の暗号化、APIキーの秘匿化など、複数の対策を講じています。書類データはサーバーに保存されず、AI処理完了後に自動削除されます。</p>
+  <div class="security-badges">
+    <span class="sec-badge">&#128274; HTTPS暗号化通信</span>
+    <span class="sec-badge">&#128273; APIキー秘匿化</span>
+    <span class="sec-badge">&#128465; データ非保存</span>
+    <span class="sec-badge">&#127758; Cloudflare保護</span>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+  <h2>今すぐ業務を効率化</h2>
+  <p>14日間の無料トライアルで、全機能をお試しいただけます。</p>
+  <a href="app.html" class="btn btn-primary btn-lg">無料で始める</a>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  &copy; 2025 Legal AI. All rights reserved.
+</footer>
+
+</body>
+</html>
