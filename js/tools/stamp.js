@@ -418,6 +418,7 @@ const StampTool = {
     return { x: cx * sx, y: this.currentPdfHeight - (cy * sy) };
   },
 
+  // Returns CENTER position of stamp in PDF coordinates
   getDefaultPdfPosition(fileIdx, pageIdx) {
     const doc = this.pdfDocs[fileIdx];
     const ps = doc.pdfPageSizes[pageIdx] || doc.pdfPageSizes[0];
@@ -427,12 +428,13 @@ const StampTool = {
     const estW = label.length * fontSize * 0.7 + 20;
     const estH = fontSize * 1.25 + 20;
     const m = 12;
+    const hw = estW / 2, hh = estH / 2;
     switch (pos) {
-      case 'top-right': return { x: ps.w - estW - m, y: ps.h - m };
-      case 'top-left': return { x: m, y: ps.h - m };
-      case 'bottom-right': return { x: ps.w - estW - m, y: estH + m };
-      case 'bottom-left': return { x: m, y: estH + m };
-      default: return { x: ps.w - estW - m, y: ps.h - m };
+      case 'top-right': return { x: ps.w - hw - m, y: ps.h - hh - m };
+      case 'top-left': return { x: hw + m, y: ps.h - hh - m };
+      case 'bottom-right': return { x: ps.w - hw - m, y: hh + m };
+      case 'bottom-left': return { x: hw + m, y: hh + m };
+      default: return { x: ps.w - hw - m, y: ps.h - hh - m };
     }
   },
 
@@ -444,6 +446,7 @@ const StampTool = {
     return this.getDefaultPdfPosition(fileIdx, pageIdx);
   },
 
+  // Placement stores CENTER of stamp in PDF coords
   updateStampOverlayPosition() {
     const stampEl = document.getElementById('stamp-ws-stamp');
     stampEl.textContent = this.getStampLabel(this.currentFileIdx);
@@ -453,8 +456,9 @@ const StampTool = {
 
     const pos = this.getStampPlacement(this.currentFileIdx, this.currentPageIdx);
     const canvasPos = this.pdfToCanvas(pos.x, pos.y);
-    stampEl.style.left = canvasPos.x + 'px';
-    stampEl.style.top = canvasPos.y + 'px';
+    // Center the stamp element on the placement point
+    stampEl.style.left = (canvasPos.x - stampEl.offsetWidth / 2) + 'px';
+    stampEl.style.top = (canvasPos.y - stampEl.offsetHeight / 2) + 'px';
   },
 
   // ===== Click to place =====
@@ -507,9 +511,12 @@ const StampTool = {
     const stampEl = document.getElementById('stamp-ws-stamp');
     stampEl.classList.remove('dragging');
 
+    // Save CENTER position of stamp
     const left = parseInt(stampEl.style.left) || 0;
     const top = parseInt(stampEl.style.top) || 0;
-    const pdfPos = this.canvasToPdf(left, top);
+    const centerX = left + stampEl.offsetWidth / 2;
+    const centerY = top + stampEl.offsetHeight / 2;
+    const pdfPos = this.canvasToPdf(centerX, centerY);
     const key = this.currentFileIdx + '-' + this.currentPageIdx;
     this.stampPlacements[key] = pdfPos;
 
@@ -574,8 +581,9 @@ const StampTool = {
 
           const placement = this.stampPlacements[i + '-' + pi] || (pi > 0 ? this.stampPlacements[i + '-0'] : null);
           if (placement) {
-            x = placement.x;
-            y = placement.y - stamp.displayHeight;
+            // placement is CENTER of stamp; drawImage uses bottom-left corner
+            x = placement.x - stamp.displayWidth / 2;
+            y = placement.y - stamp.displayHeight / 2;
           } else {
             const m = 12;
             switch (pos) {
